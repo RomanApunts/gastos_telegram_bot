@@ -27,18 +27,21 @@ final class AddRecurringCommand implements BotCommandInterface
 
     public function help(): string
     {
-        return '/recurrente <día> <importe> <categoría> [descripción] — gasto fijo mensual';
+        return '/recurrente <día> <importe> <categoría> [descripción] — gasto fijo mensual'
+            . ' (día negativo = desde el final: -1 último día, -2 penúltimo)';
     }
 
     public function handle(BotContext $ctx): string
     {
         $parts = preg_split('/\s+/', trim($ctx->args), 3);
         if (count($parts) < 3) {
-            return "Uso: /recurrente <día> <importe> <categoría> [descripción]\nEj: /recurrente 1 800 Alquiler";
+            return "Uso: /recurrente <día> <importe> <categoría> [descripción]\n"
+                . "Ej: /recurrente 1 800 Alquiler  ·  /recurrente -1 1200 Nómina (último día)";
         }
 
-        if (!ctype_digit($parts[0]) || (int) $parts[0] < 1 || (int) $parts[0] > 31) {
-            return "❌ El día debe ser un número entre 1 y 31. Recibí «{$parts[0]}».";
+        if (!preg_match('/^-?\d+$/', $parts[0]) || !$this->isValidDay((int) $parts[0])) {
+            return "❌ El día debe ir de 1 a 31, o de -1 a -28 para contar desde el final"
+                . " (-1 = último día). Recibí «{$parts[0]}».";
         }
         $day = (int) $parts[0];
 
@@ -59,6 +62,12 @@ final class AddRecurringCommand implements BotCommandInterface
         $desc = $description !== null ? " ({$description})" : '';
 
         return "🔁 Gasto fijo creado: " . Money::format($amount) . " en {$category->getName()}{$desc}"
-            . ", cada día {$day} del mes.";
+            . ", " . $recurring->getDayLabel() . ".";
+    }
+
+    /** Acepta 1..31 (día fijo) o -1..-28 (desde el final, válido en cualquier mes). */
+    private function isValidDay(int $day): bool
+    {
+        return ($day >= 1 && $day <= 31) || ($day <= -1 && $day >= -28);
     }
 }

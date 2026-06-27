@@ -43,7 +43,7 @@ final class ListRecurringCommand implements BotCommandInterface
     {
         $desc = $r->getDescription() !== null ? " {$r->getDescription()}" : '';
 
-        return "#{$r->getId()} · día {$r->getDayOfMonth()} · {$r->getCategory()->getName()}"
+        return "#{$r->getId()} · {$r->getDayLabel()} · {$r->getCategory()->getName()}"
             . " · " . Money::format($r->getAmount()) . "{$desc}";
     }
 }

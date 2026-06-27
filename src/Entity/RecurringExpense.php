@@ -92,6 +92,39 @@ class RecurringExpense
         return $this->dayOfMonth;
     }
 
+    /**
+     * Descripción legible del día de cobro.
+     * Positivo = día fijo; negativo = contando desde el final (-1 = último).
+     */
+    public function getDayLabel(): string
+    {
+        $d = $this->dayOfMonth;
+        if ($d >= 1) {
+            return "el día {$d} de cada mes";
+        }
+        if ($d === -1) {
+            return 'el último día de cada mes';
+        }
+        if ($d === -2) {
+            return 'el penúltimo día de cada mes';
+        }
+
+        return 'el ' . abs($d) . 'º día desde el final de cada mes';
+    }
+
+    /**
+     * Convierte el día configurado en el día concreto (1..n) de un mes dado,
+     * resolviendo los valores negativos desde el final.
+     */
+    public function resolveDayFor(int $daysInMonth): int
+    {
+        $day = $this->dayOfMonth < 0
+            ? $daysInMonth + $this->dayOfMonth + 1  // -1 => último día
+            : $this->dayOfMonth;
+
+        return max(1, min($day, $daysInMonth));
+    }
+
     public function isActive(): bool
     {
         return $this->active;

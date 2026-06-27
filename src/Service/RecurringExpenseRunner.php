@@ -34,8 +34,10 @@ final class RecurringExpenseRunner
                 continue; // ya generado este mes
             }
 
-            // Si el día configurado no existe este mes (ej. 31 en febrero), usa el último día.
-            $effectiveDay = min($template->getDayOfMonth(), $daysInMonth);
+            // Resuelve el día concreto de este mes: valores negativos cuentan
+            // desde el final (-1 = último día) y los positivos que se pasan del
+            // mes (ej. 31 en febrero) se ajustan al último día.
+            $effectiveDay = $template->resolveDayFor($daysInMonth);
             if ($todayDay < $effectiveDay) {
                 continue; // todavía no toca
             }

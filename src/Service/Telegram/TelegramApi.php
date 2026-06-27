@@ -4,6 +4,8 @@ namespace App\Service\Telegram;
 
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Mime\Part\DataPart;
+use Symfony\Component\Mime\Part\Multipart\FormDataPart;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
@@ -27,6 +29,25 @@ final class TelegramApi
             ])->getStatusCode();
         } catch (\Throwable $e) {
             $this->logger->error('Telegram sendMessage falló: ' . $e->getMessage());
+        }
+    }
+
+    public function sendPhoto(string $chatId, string $photoPath, ?string $caption = null): void
+    {
+        try {
+            $fields = ['chat_id' => $chatId];
+            if ($caption !== null && $caption !== '') {
+                $fields['caption'] = $caption;
+            }
+            $fields['photo'] = DataPart::fromPath($photoPath);
+
+            $form = new FormDataPart($fields);
+            $this->httpClient->request('POST', $this->endpoint('sendPhoto'), [
+                'headers' => $form->getPreparedHeaders()->toArray(),
+                'body' => $form->bodyToIterable(),
+            ])->getStatusCode();
+        } catch (\Throwable $e) {
+            $this->logger->error('Telegram sendPhoto falló: ' . $e->getMessage());
         }
     }
 

@@ -41,6 +41,21 @@ class ExpenseRepository extends ServiceEntityRepository
         return $totals;
     }
 
+    /** Total gastado (todas las categorías) dentro de un periodo. */
+    public function sumForPeriod(\DateTimeImmutable $from, \DateTimeImmutable $to): string
+    {
+        $total = $this->createQueryBuilder('e')
+            ->select('COALESCE(SUM(e.amount), 0)')
+            ->where('e.spentAt >= :from')
+            ->andWhere('e.spentAt < :to')
+            ->setParameter('from', $from->format('Y-m-d'))
+            ->setParameter('to', $to->format('Y-m-d'))
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return (string) $total;
+    }
+
     /**
      * Últimos gastos registrados, del más reciente al más antiguo.
      *

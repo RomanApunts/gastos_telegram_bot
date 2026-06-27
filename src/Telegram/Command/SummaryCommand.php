@@ -2,17 +2,18 @@
 
 namespace App\Telegram\Command;
 
-use App\Service\SummaryBuilder;
+use App\Service\SummaryReporter;
 use App\Telegram\BotContext;
 use App\Telegram\Util\Months;
 
 /**
- * Resumen del mes:  /resumen   ·   /resumen pasado   ·   /resumen 05/2026
+ * Resumen del mes (texto + gráficos):
+ *   /resumen   ·   /resumen pasado   ·   /resumen 05/2026
  */
 final class SummaryCommand implements BotCommandInterface
 {
     public function __construct(
-        private readonly SummaryBuilder $builder,
+        private readonly SummaryReporter $reporter,
     ) {
     }
 
@@ -23,7 +24,7 @@ final class SummaryCommand implements BotCommandInterface
 
     public function help(): string
     {
-        return '/resumen [pasado | MM/AAAA] — situación del mes';
+        return '/resumen [pasado | MM/AAAA] — situación del mes (con gráficos)';
     }
 
     public function handle(BotContext $ctx): string
@@ -33,6 +34,8 @@ final class SummaryCommand implements BotCommandInterface
             return "❌ Formato de mes no válido. Usa /resumen, /resumen pasado o /resumen MM/AAAA.";
         }
 
-        return $this->builder->build($period);
+        $this->reporter->sendTo($ctx->chatId, $period);
+
+        return ''; // el reporter ya ha enviado el texto y los gráficos
     }
 }
