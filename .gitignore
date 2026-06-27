@@ -8,3 +8,6 @@
 /var/
 /vendor/
 ###< symfony/framework-bundle ###
+
+# Artefactos del proyecto
+/app_gastos_bot.zip
