@@ -23,6 +23,12 @@ final class Months
         return self::fromStart(self::firstDayOfThisMonth());
     }
 
+    /** Etiqueta legible del mes que contiene una fecha (ej. "junio 2026"). */
+    public static function labelFor(\DateTimeImmutable $date): string
+    {
+        return self::NAMES[(int) $date->format('n')] . ' ' . $date->format('Y');
+    }
+
     /**
      * Resuelve el argumento de un comando de resumen.
      * Acepta: vacío (mes actual), "pasado"/"anterior" (mes pasado),

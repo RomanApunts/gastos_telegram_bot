@@ -22,8 +22,11 @@ Construido con **Symfony 8.1** y **PHP 8.4+**, almacena los datos en
 - **Lectura de tickets por foto** 🧾: envías la foto de un ticket y el bot extrae
   el importe, la fecha y el comercio, y propone una categoría (visión con Google
   Gemini). Lo confirmas o lo ajustas con botones antes de guardarlo.
-- **Registro de gastos** categorizados, con descripción opcional y atribución al
-  usuario que lo registra.
+- **Registro de gastos** categorizados (importe, descripción y atribución al
+  usuario). Admite **fecha pasada** (`ayer`, `12/06`…) y, si no indicas
+  categoría, te la pregunta con botones.
+- **Ingresos y balance**: registra ingresos (nómina, extras…) y el resumen
+  muestra *ingresado − gastado = **balance*** del mes.
 - **Categorías** personalizables (admiten varias palabras, p. ej. `Comida fuera`).
 - **Límites mensuales por categoría con histórico**: cada cambio de máximo crea
   una nueva entrada con su fecha de vigencia, de modo que los meses anteriores
@@ -39,7 +42,8 @@ Construido con **Symfony 8.1** y **PHP 8.4+**, almacena los datos en
 - **Gastos recurrentes** (alquiler, suscripciones, nómina…) que se generan solos
   el día indicado de cada mes. El día admite **valores negativos contando desde
   el final** (`-1` = último día, `-2` = penúltimo…).
-- **Edición y borrado** de gastos ya registrados.
+- **Edición y borrado** de gastos, por comando o **con botones** desde `/ultimos`
+  (borrar con confirmación o cambiar la categoría al toque).
 - **Resumen automático programado** (semanal y/o cierre de mes) con sus gráficos,
   enviado a todos los usuarios mediante tareas cron.
 - **Lista blanca de usuarios**: solo los IDs de Telegram autorizados pueden usar
@@ -51,10 +55,13 @@ Construido con **Symfony 8.1** y **PHP 8.4+**, almacena los datos en
 
 | Comando | Alias | Descripción |
 |---|---|---|
-| `/gasto <importe> <categoría> [descripción]` | `/g` | Registra un gasto |
-| `/ultimos [n]` | `/lista` | Últimos gastos con su ID |
+| `/gasto <importe> <categoría> [fecha] [descripción]` | `/g` | Registra un gasto (admite fecha pasada) |
+| `/ultimos [n]` | `/lista` | Últimos gastos, con botones para editar/borrar |
 | `/editar <id> <importe\|categoria\|descripcion> <valor>` | `/edit` | Corrige un gasto |
 | `/borrar <id>` | `/eliminar`, `/del` | Elimina un gasto |
+| `/ingreso <importe> [descripción]` | `/ing` | Registra un ingreso |
+| `/ingresos [n]` | — | Lista los últimos ingresos |
+| `/borraringreso <id>` | `/borrarin` | Elimina un ingreso |
 | `/nuevacategoria <nombre>` | `/nuevacat` | Crea una categoría |
 | `/categorias` | `/cats` | Lista las categorías |
 | `/limite <categoría> <importe>` | `/presupuesto` | Fija el máximo mensual de una categoría |
@@ -77,6 +84,12 @@ Construido con **Symfony 8.1** y **PHP 8.4+**, almacena los datos en
   sintaxis con un ejemplo.
 - **Foto de ticket**: manda una foto al chat y el bot la lee y te propone el
   gasto con botones de **✅ Confirmar / 🏷️ Categoría / ❌ Cancelar**.
+- **Fecha pasada**: tras la categoría puedes poner `hoy`, `ayer`, `anteayer` o
+  una fecha `dd/mm` (o `dd/mm/aaaa`). Ej: `/gasto 20 Comida ayer cena`.
+- **Sin categoría**: si registras `/gasto 15` (o con un texto que no es una
+  categoría), el bot te ofrece botones para elegirla y confirmar.
+- **Gestionar gastos**: `/ultimos` lista los gastos con un botón cada uno; al
+  pulsarlo puedes **borrarlo** (con confirmación) o **cambiarle la categoría**.
 - Los importes admiten coma o punto decimal (`12,50` o `12.50`) y opcionalmente
   el símbolo `€`.
 - Las categorías pueden tener varias palabras; el bot las reconoce al principio
@@ -355,7 +368,8 @@ día, cada gasto recurrente se genera una sola vez por mes.
 | `Expense` | Gasto: importe, categoría, usuario, fecha y descripción |
 | `CategoryBudget` | Límite mensual por categoría con `effectiveFrom` (histórico) |
 | `RecurringExpense` | Plantilla de gasto fijo: importe, categoría, día del mes |
-| `PendingExpense` | Gasto extraído de un ticket a la espera de confirmación |
+| `Income` | Ingreso: importe, descripción y fecha (sin categoría) |
+| `PendingExpense` | Gasto (de ticket o `/gasto` sin categoría) a la espera de confirmación |
 
 El límite vigente de una categoría para un mes es la fila de `CategoryBudget`
 con el `effectiveFrom` más reciente anterior o igual a ese mes.
@@ -402,8 +416,9 @@ src/
     ├── CategoryMatcher.php  Reconocimiento de categorías
     ├── Command/             Un archivo por comando del bot
     ├── Menu/                Menú guiado y sus pulsaciones
-    ├── Receipt/             Flujo de fotos de tickets y su confirmación
-    └── Util/                Utilidades (importes, meses)
+    ├── Receipt/             Tickets y confirmación de gastos pendientes (botones)
+    ├── Expense/             Gestión de gastos con botones (lista/editar/borrar)
+    └── Util/                Utilidades (importes, meses, fechas)
 ```
 
 ---
@@ -423,10 +438,10 @@ src/
 Funciones contempladas para más adelante:
 
 - Exportación de gastos a CSV/Excel.
-- Registro de **ingresos** y balance neto del mes.
 - Desglose por persona (cuánto aporta cada usuario).
 - Guardar la imagen del ticket junto al gasto registrado.
 - Presupuesto total mensual y objetivo de ahorro.
+- Comparativa con el mes anterior, proyección de fin de mes y búsqueda de gastos.
 
 ---
 

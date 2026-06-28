@@ -2,18 +2,18 @@
 
 namespace App\Telegram\Command;
 
-use App\Entity\Expense;
-use App\Repository\ExpenseRepository;
+use App\Service\Telegram\TelegramApi;
 use App\Telegram\BotContext;
-use App\Telegram\Util\Money;
+use App\Telegram\Expense\ExpenseListPresenter;
 
 /**
- * Últimos gastos con su ID:  /ultimos [n]
+ * Últimos gastos, con botones para editar/borrar:  /ultimos [n]
  */
 final class ListRecentCommand implements BotCommandInterface
 {
     public function __construct(
-        private readonly ExpenseRepository $expenses,
+        private readonly TelegramApi $api,
+        private readonly ExpenseListPresenter $presenter,
     ) {
     }
 
@@ -24,29 +24,21 @@ final class ListRecentCommand implements BotCommandInterface
 
     public function help(): string
     {
-        return '/ultimos [n] — últimos gastos con su ID (para editar/borrar)';
+        return '/ultimos [n] — últimos gastos, con botones para editar/borrar';
     }
 
     public function handle(BotContext $ctx): string
     {
         $n = (int) trim($ctx->args);
-        $n = $n < 1 ? 10 : min($n, 30);
+        $n = $n < 1 ? 8 : min($n, 12);
 
-        $expenses = $this->expenses->findRecent($n);
-        if ($expenses === []) {
-            return 'No hay gastos registrados todavía.';
+        $view = $this->presenter->listView($n);
+        if ($view['keyboard'] === []) {
+            return $view['text']; // no hay gastos: respuesta normal de texto
         }
 
-        $lines = array_map(fn (Expense $e) => $this->line($e), $expenses);
+        $this->api->sendMessageWithKeyboard($ctx->chatId, $view['text'], $view['keyboard']);
 
-        return "🧾 Últimos gastos:\n" . implode("\n", $lines);
-    }
-
-    private function line(Expense $e): string
-    {
-        $desc = $e->getDescription() !== null ? " {$e->getDescription()}" : '';
-
-        return "#{$e->getId()} · {$e->getSpentAt()->format('d/m')} · {$e->getCategory()->getName()}"
-            . " · " . Money::format($e->getAmount()) . "{$desc} — {$e->getUser()->getName()}";
+        return '';
     }
 }

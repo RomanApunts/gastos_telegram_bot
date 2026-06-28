@@ -19,8 +19,9 @@ final class Menu
         return match ($key) {
             'gasto' => [
                 'text' => "💸 Registrar un gasto\n\n"
-                    . "Escribe:\n/gasto <importe> <categoría> [descripción]\n\n"
-                    . "Ejemplo:  /gasto 12,50 Comida menú\n\n"
+                    . "Escribe:\n/gasto <importe> <categoría> [fecha] [descripción]\n\n"
+                    . "Ejemplos:\n• /gasto 12,50 Comida menú\n• /gasto 20 Comida ayer  (fecha pasada)\n\n"
+                    . "💡 Si no pones categoría, te la pregunto con botones.\n"
                     . '💡 También puedes mandarme una foto del ticket 📸',
                 'keyboard' => [self::back()],
             ],
@@ -74,9 +75,10 @@ final class Menu
             ],
             'edit' => [
                 'text' => "✏️ Editar o borrar\n\n"
-                    . "Borrar:  /borrar <id>\n"
-                    . "Editar:  /editar <id> importe|categoria|descripcion <valor>\n\n"
-                    . 'Mira los IDs con «Ver últimos».',
+                    . "Pulsa «Ver últimos» y elige un gasto: podrás borrarlo o "
+                    . "cambiarle la categoría con botones.\n\n"
+                    . "También por comando:\n"
+                    . "/borrar <id>\n/editar <id> importe|categoria|descripcion <valor>",
                 'keyboard' => [
                     [self::b('📋 Ver últimos', 'm:run:ultimos')],
                     self::back(),

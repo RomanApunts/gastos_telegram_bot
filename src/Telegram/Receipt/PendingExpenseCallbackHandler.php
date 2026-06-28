@@ -24,7 +24,7 @@ final class PendingExpenseCallbackHandler
         private readonly PendingExpenseRepository $pendings,
         private readonly CategoryRepository $categories,
         private readonly EntityManagerInterface $em,
-        private readonly ReceiptFlow $flow,
+        private readonly PendingExpensePresenter $presenter,
     ) {
     }
 
@@ -53,7 +53,7 @@ final class PendingExpenseCallbackHandler
                 $this->api->editMessageText(
                     $chatId,
                     $messageId,
-                    $this->flow->summary($pending) . "\n\nElige una categoría:",
+                    $this->presenter->summary($pending) . "\n\nElige una categoría:",
                     $this->categoryKeyboard($pending),
                 );
                 break;
@@ -64,11 +64,11 @@ final class PendingExpenseCallbackHandler
                     $pending->setCategory($category);
                     $this->em->flush();
                 }
-                $this->api->editMessageText($chatId, $messageId, $this->flow->summary($pending), $this->flow->keyboard($pending));
+                $this->api->editMessageText($chatId, $messageId, $this->presenter->summary($pending), $this->presenter->keyboard($pending));
                 break;
 
             case 'b':
-                $this->api->editMessageText($chatId, $messageId, $this->flow->summary($pending), $this->flow->keyboard($pending));
+                $this->api->editMessageText($chatId, $messageId, $this->presenter->summary($pending), $this->presenter->keyboard($pending));
                 break;
 
             case 'c':
@@ -83,8 +83,8 @@ final class PendingExpenseCallbackHandler
             $this->api->editMessageText(
                 $chatId,
                 $messageId,
-                $this->flow->summary($pending) . "\n\n⚠️ Elige una categoría antes de confirmar.",
-                $this->flow->keyboard($pending),
+                $this->presenter->summary($pending) . "\n\n⚠️ Elige una categoría antes de confirmar.",
+                $this->presenter->keyboard($pending),
             );
 
             return;

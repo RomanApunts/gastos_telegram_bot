@@ -4,6 +4,7 @@ namespace App\Telegram;
 
 use App\Repository\TelegramUserRepository;
 use App\Service\Telegram\TelegramApi;
+use App\Telegram\Expense\ExpenseCallbackHandler;
 use App\Telegram\Menu\MenuCallbackHandler;
 use App\Telegram\Receipt\PendingExpenseCallbackHandler;
 use App\Telegram\Receipt\ReceiptFlow;
@@ -21,6 +22,7 @@ final class UpdateProcessor
         private readonly ReceiptFlow $receiptFlow,
         private readonly PendingExpenseCallbackHandler $callbackHandler,
         private readonly MenuCallbackHandler $menuCallbackHandler,
+        private readonly ExpenseCallbackHandler $expenseCallbackHandler,
     ) {
     }
 
@@ -106,6 +108,8 @@ final class UpdateProcessor
             $this->callbackHandler->handle($user, $callbackId, $chatId, $messageId, $data);
         } elseif (str_starts_with($data, 'm:')) {
             $this->menuCallbackHandler->handle($user, $callbackId, $chatId, $messageId, $data);
+        } elseif (str_starts_with($data, 'e:')) {
+            $this->expenseCallbackHandler->handle($user, $callbackId, $chatId, $messageId, $data);
         } else {
             $this->api->answerCallbackQuery($callbackId);
         }

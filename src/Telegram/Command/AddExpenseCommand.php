@@ -5,27 +5,31 @@ namespace App\Telegram\Command;
 use App\Entity\Category;
 use App\Entity\Expense;
 use App\Repository\CategoryBudgetRepository;
-use App\Repository\CategoryRepository;
 use App\Repository\ExpenseRepository;
 use App\Service\Notifier;
 use App\Telegram\BotContext;
 use App\Telegram\CategoryMatcher;
+use App\Telegram\Receipt\PendingExpensePresenter;
+use App\Telegram\Util\Dates;
 use App\Telegram\Util\Money;
 use App\Telegram\Util\Months;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * Registra un gasto:  /gasto 12,50 Comida menú del día
+ *
+ * - Admite fecha pasada tras la categoría:  /gasto 20 Comida ayer  ·  /gasto 20 Comida 12/06
+ * - Si no se reconoce la categoría (o falta), propone el gasto con botones de categoría.
  */
 final class AddExpenseCommand implements BotCommandInterface
 {
     public function __construct(
         private readonly EntityManagerInterface $em,
-        private readonly CategoryRepository $categories,
         private readonly ExpenseRepository $expenses,
         private readonly CategoryBudgetRepository $budgets,
         private readonly CategoryMatcher $matcher,
         private readonly Notifier $notifier,
+        private readonly PendingExpensePresenter $presenter,
     ) {
     }
 
@@ -36,7 +40,7 @@ final class AddExpenseCommand implements BotCommandInterface
 
     public function help(): string
     {
-        return '/gasto <importe> <categoría> [descripción] — registra un gasto';
+        return '/gasto <importe> <categoría> [fecha] [descripción] — registra un gasto';
     }
 
     public function handle(BotContext $ctx): string
@@ -45,7 +49,6 @@ final class AddExpenseCommand implements BotCommandInterface
             return "Uso: /gasto <importe> <categoría> [descripción]\nEj: /gasto 12,50 Comida menú del día";
         }
 
-        // El importe es el primer token; el resto es "categoría [descripción]".
         $parts = preg_split('/\s+/', $ctx->args, 2);
         $amount = Money::parse($parts[0]);
         if ($amount === null) {
@@ -53,33 +56,65 @@ final class AddExpenseCommand implements BotCommandInterface
         }
 
         $rest = trim($parts[1] ?? '');
+
+        // Sin texto de categoría → proponer con botones para elegirla.
         if ($rest === '') {
-            return '❌ Falta la categoría. ' . $this->categoriesHint();
+            $this->presenter->propose($ctx->user, $ctx->chatId, $amount, new \DateTimeImmutable('today'), null, null);
+
+            return '';
         }
 
         [$category, $description] = $this->matcher->match($rest);
+
+        // Categoría no reconocida → proponer con botones; el texto queda como nota.
         if ($category === null) {
-            return "❌ No encuentro esa categoría. " . $this->categoriesHint();
+            $this->presenter->propose($ctx->user, $ctx->chatId, $amount, new \DateTimeImmutable('today'), null, $rest);
+
+            return '';
         }
 
-        $expense = new Expense($category, $ctx->user, $amount, new \DateTimeImmutable('today'), $description);
+        // Fecha opcional al inicio de la descripción (ayer, 12/06…).
+        $spentAt = new \DateTimeImmutable('today');
+        if ($description !== null) {
+            $tokens = preg_split('/\s+/', $description, 2);
+            $date = Dates::parse($tokens[0]);
+            if ($date !== null) {
+                $spentAt = $date;
+                $description = trim($tokens[1] ?? '');
+                $description = $description === '' ? null : $description;
+            }
+        }
+
+        $expense = new Expense($category, $ctx->user, $amount, $spentAt, $description);
         $this->em->persist($expense);
         $this->em->flush();
 
-        return $this->confirmation($ctx, $category, $amount, $description);
+        return $this->confirmation($ctx, $category, $amount, $description, $spentAt);
     }
 
-    private function confirmation(BotContext $ctx, Category $category, string $amount, ?string $description): string
-    {
-        $period = Months::current();
-        $totals = $this->expenses->sumByCategoryForPeriod($period['start'], $period['end']);
+    private function confirmation(
+        BotContext $ctx,
+        Category $category,
+        string $amount,
+        ?string $description,
+        \DateTimeImmutable $spentAt,
+    ): string {
+        $today = new \DateTimeImmutable('today');
+        $monthStart = $spentAt->modify('first day of this month')->setTime(0, 0, 0);
+        $monthEnd = $monthStart->modify('first day of next month');
+        $isCurrentMonth = $monthStart->format('Y-m') === $today->format('Y-m');
+
+        $totals = $this->expenses->sumByCategoryForPeriod($monthStart, $monthEnd);
         $spent = $totals[$category->getId()] ?? '0';
 
         $desc = $description !== null ? " ({$description})" : '';
-        $msg = "✅ Registrado: " . Money::format($amount) . " en {$category->getName()}{$desc}\n";
-        $msg .= "Este mes llevas " . Money::format($spent) . " en {$category->getName()}";
+        $date = $spentAt->format('Y-m-d') !== $today->format('Y-m-d') ? ' · ' . $spentAt->format('d/m/Y') : '';
+        $msg = "✅ Registrado: " . Money::format($amount) . " en {$category->getName()}{$desc}{$date}\n";
 
-        $budget = $this->budgets->findEffectiveForMonth($category, $period['start']);
+        $when = $isCurrentMonth ? 'Este mes' : 'En ' . Months::labelFor($monthStart);
+        $msg .= "{$when} llevas " . Money::format($spent) . " en {$category->getName()}";
+
+        $budget = $this->budgets->findEffectiveForMonth($category, $monthStart);
         if ($budget !== null) {
             $remaining = bcsub($budget->getAmount(), $spent, 2);
             if (bccomp($remaining, '0', 2) >= 0) {
@@ -88,7 +123,10 @@ final class AddExpenseCommand implements BotCommandInterface
                 $msg .= " · ⚠️ te has pasado " . Money::format(ltrim($remaining, '-')) . " del límite";
             }
 
-            $this->maybeAlert($ctx, $category, $budget->getAmount(), $spent, $amount);
+            // Solo avisamos al resto si el gasto es del mes en curso.
+            if ($isCurrentMonth) {
+                $this->maybeAlert($ctx, $category, $budget->getAmount(), $spent, $amount);
+            }
         }
 
         return $msg;
@@ -116,19 +154,7 @@ final class AddExpenseCommand implements BotCommandInterface
         }
 
         if ($alert !== null) {
-            // El que registra ya lo ve en su confirmación; avisamos al resto.
             $this->notifier->broadcast($alert, $ctx->user->getTelegramId());
         }
-    }
-
-    private function categoriesHint(): string
-    {
-        $cats = $this->categories->findActiveOrdered();
-        if ($cats === []) {
-            return 'Aún no hay categorías. Crea una con /nuevacategoria <nombre>.';
-        }
-        $names = implode(', ', array_map(fn (Category $c) => $c->getName(), $cats));
-
-        return "Categorías: {$names}.";
     }
 }
