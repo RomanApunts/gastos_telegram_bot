@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Repository\CategoryBudgetRepository;
 use App\Repository\CategoryRepository;
 use App\Repository\ExpenseRepository;
+use App\Repository\IncomeRepository;
 use App\Telegram\Util\Money;
 
 /**
@@ -17,6 +18,7 @@ final class SummaryBuilder
         private readonly CategoryRepository $categories,
         private readonly ExpenseRepository $expenses,
         private readonly CategoryBudgetRepository $budgets,
+        private readonly IncomeRepository $incomes,
     ) {
     }
 
@@ -51,14 +53,26 @@ final class SummaryBuilder
             }
         }
 
-        if ($lines === []) {
-            return "📊 {$period['label']}\n\nSin gastos registrados.";
+        $income = $this->incomes->sumForPeriod($period['start'], $period['end']);
+        $hasIncome = bccomp($income, '0', 2) > 0;
+
+        if ($lines === [] && !$hasIncome) {
+            return "📊 {$period['label']}\n\nSin movimientos registrados.";
         }
 
-        $msg = "📊 Resumen de {$period['label']}\n\n" . implode("\n", $lines);
-        $msg .= "\n\n💶 Total gastado: " . Money::format($totalSpent);
+        $msg = "📊 Resumen de {$period['label']}\n\n"
+            . ($lines !== [] ? implode("\n", $lines) : 'Sin gastos registrados.');
+
+        $msg .= "\n\n💸 Gastos: " . Money::format($totalSpent);
         if (bccomp($totalLimit, '0', 2) > 0) {
             $msg .= " de " . Money::format($totalLimit);
+        }
+
+        if ($hasIncome) {
+            $balance = bcsub($income, $totalSpent, 2);
+            $msg .= "\n💰 Ingresos: " . Money::format($income);
+            $msg .= "\n⚖️ Balance: " . Money::format($balance)
+                . (bccomp($balance, '0', 2) >= 0 ? ' ✅' : ' 🔴');
         }
 
         return $msg;

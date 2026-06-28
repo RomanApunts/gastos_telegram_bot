@@ -16,6 +16,7 @@ final class MenuCallbackHandler
     /** Acciones rápidas: clave → comando de texto que se despacha. */
     private const RUN = [
         'resumen' => '/resumen',
+        'ingresos' => '/ingresos',
         'cats' => '/categorias',
         'limits' => '/limites',
         'fijos' => '/recurrentes',

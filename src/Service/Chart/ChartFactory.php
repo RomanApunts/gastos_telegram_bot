@@ -5,6 +5,7 @@ namespace App\Service\Chart;
 use App\Repository\CategoryBudgetRepository;
 use App\Repository\CategoryRepository;
 use App\Repository\ExpenseRepository;
+use App\Repository\IncomeRepository;
 
 /**
  * Construye configuraciones de Chart.js a partir de los datos de gasto.
@@ -26,6 +27,7 @@ final class ChartFactory
         private readonly CategoryRepository $categories,
         private readonly ExpenseRepository $expenses,
         private readonly CategoryBudgetRepository $budgets,
+        private readonly IncomeRepository $incomes,
     ) {
     }
 
@@ -141,7 +143,8 @@ final class ChartFactory
     }
 
     /**
-     * Barras con el gasto total de los últimos N meses.
+     * Barras agrupadas por mes: gastos vs. ingresos de los últimos N meses.
+     * El balance se aprecia como la diferencia entre ambas barras.
      *
      * @return array<string, mixed>|null
      */
@@ -150,16 +153,19 @@ final class ChartFactory
         $current = (new \DateTimeImmutable('today'))->modify('first day of this month')->setTime(0, 0, 0);
 
         $labels = [];
-        $data = [];
+        $spentData = [];
+        $incomeData = [];
         $hasData = false;
         for ($i = $months - 1; $i >= 0; --$i) {
             $start = $current->modify("-{$i} months");
             $end = $start->modify('first day of next month');
-            $total = (float) $this->expenses->sumForPeriod($start, $end);
+            $spent = (float) $this->expenses->sumForPeriod($start, $end);
+            $income = (float) $this->incomes->sumForPeriod($start, $end);
 
             $labels[] = self::SHORT_MONTHS[(int) $start->format('n')] . ' ' . $start->format('y');
-            $data[] = $total;
-            $hasData = $hasData || $total > 0;
+            $spentData[] = $spent;
+            $incomeData[] = $income;
+            $hasData = $hasData || $spent > 0 || $income > 0;
         }
 
         if (!$hasData) {
@@ -170,18 +176,17 @@ final class ChartFactory
             'type' => 'bar',
             'data' => [
                 'labels' => $labels,
-                'datasets' => [[
-                    'label' => 'Gasto total',
-                    'data' => $data,
-                    'backgroundColor' => '#4e79a7',
-                ]],
+                'datasets' => [
+                    ['label' => 'Gastos', 'data' => $spentData, 'backgroundColor' => '#e15759'],
+                    ['label' => 'Ingresos', 'data' => $incomeData, 'backgroundColor' => '#59a14f'],
+                ],
             ],
             'options' => [
-                'legend' => ['display' => false],
+                'legend' => ['position' => 'top'],
                 'title' => [
                     'display' => true,
                     'fontSize' => 18,
-                    'text' => "Evolución del gasto · últimos {$months} meses",
+                    'text' => "Gastos vs. ingresos · últimos {$months} meses",
                 ],
                 'scales' => [
                     'yAxes' => [['ticks' => ['beginAtZero' => true]]],

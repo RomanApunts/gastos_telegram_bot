@@ -24,6 +24,15 @@ final class Menu
                     . '💡 También puedes mandarme una foto del ticket 📸',
                 'keyboard' => [self::back()],
             ],
+            'ingreso' => [
+                'text' => "💰 Registrar un ingreso\n\n"
+                    . "Escribe:\n/ingreso <importe> [descripción]\n\n"
+                    . 'Ejemplo:  /ingreso 1800 nómina',
+                'keyboard' => [
+                    [self::b('📋 Ver ingresos', 'm:run:ingresos')],
+                    self::back(),
+                ],
+            ],
             'ticket' => [
                 'text' => "🧾 Enviar un ticket\n\n"
                     . 'Mándame una foto de un ticket y leeré el importe, la fecha y la categoría '
@@ -76,10 +85,11 @@ final class Menu
             default => [
                 'text' => "👋 ¿Qué quieres hacer?\n\nElige una opción 👇",
                 'keyboard' => [
-                    [self::b('💸 Registrar gasto', 'm:nav:gasto'), self::b('🧾 Enviar ticket', 'm:nav:ticket')],
-                    [self::b('📊 Resumen', 'm:run:resumen'), self::b('📈 Gráficos', 'm:nav:graf')],
-                    [self::b('🏷️ Categorías', 'm:nav:cats'), self::b('🎯 Límites', 'm:nav:limits')],
-                    [self::b('🔁 Gastos fijos', 'm:nav:fijos'), self::b('✏️ Editar/Borrar', 'm:nav:edit')],
+                    [self::b('💸 Registrar gasto', 'm:nav:gasto'), self::b('💰 Registrar ingreso', 'm:nav:ingreso')],
+                    [self::b('🧾 Enviar ticket', 'm:nav:ticket'), self::b('📊 Resumen', 'm:run:resumen')],
+                    [self::b('📈 Gráficos', 'm:nav:graf'), self::b('🏷️ Categorías', 'm:nav:cats')],
+                    [self::b('🎯 Límites', 'm:nav:limits'), self::b('🔁 Gastos fijos', 'm:nav:fijos')],
+                    [self::b('✏️ Editar/Borrar', 'm:nav:edit')],
                 ],
             ],
         };

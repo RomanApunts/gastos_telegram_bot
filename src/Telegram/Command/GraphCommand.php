@@ -60,7 +60,7 @@ final class GraphCommand implements BotCommandInterface
 
         [$config, $caption] = match ($type) {
             'limites' => [$this->charts->budgetVsSpent($period), "Gastado vs. límite · {$period['label']}"],
-            'evolucion' => [$this->charts->monthlyTrend(6), 'Evolución del gasto (últimos 6 meses)'],
+            'evolucion' => [$this->charts->monthlyTrend(6), 'Gastos vs. ingresos (últimos 6 meses)'],
             default => [$this->charts->categoryShare($period), "Reparto por categoría · {$period['label']}"],
         };
 

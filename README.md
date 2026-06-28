@@ -35,7 +35,7 @@ Construido con **Symfony 8.1** y **PHP 8.4+**, almacena los datos en
   saldo restante y total gastado. Consultables para el mes actual, el anterior o
   cualquier `MM/AAAA`.
 - **Gráficos** enviados como imagen: reparto por categoría (donut), gastado vs.
-  límite (barras) y evolución del gasto de los últimos meses.
+  límite (barras) y evolución de **gastos vs. ingresos** de los últimos meses.
 - **Gastos recurrentes** (alquiler, suscripciones, nómina…) que se generan solos
   el día indicado de cada mes. El día admite **valores negativos contando desde
   el final** (`-1` = último día, `-2` = penúltimo…).
