@@ -11,17 +11,13 @@ use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
  */
 final class CommandRouter
 {
-    /** @var BotCommandInterface[] */
-    private readonly array $all;
-
     /** @var array<string, BotCommandInterface> */
     private array $byName = [];
 
     public function __construct(
         #[AutowireIterator('app.bot_command')] iterable $commands,
     ) {
-        $this->all = $commands instanceof \Traversable ? iterator_to_array($commands) : $commands;
-        foreach ($this->all as $command) {
+        foreach ($commands as $command) {
             foreach ($command->names() as $name) {
                 $this->byName[mb_strtolower($name)] = $command;
             }
@@ -32,7 +28,7 @@ final class CommandRouter
     {
         $text = trim($text);
         if ($text === '' || $text[0] !== '/') {
-            return $this->help();
+            return 'Escribe /menu para ver las opciones 👇';
         }
 
         $parts = preg_split('/\s+/', substr($text, 1), 2);
@@ -43,27 +39,11 @@ final class CommandRouter
             $name = mb_substr($name, 0, $at);
         }
 
-        if (in_array($name, ['start', 'help', 'ayuda'], true)) {
-            return $this->help();
-        }
-
         $command = $this->byName[$name] ?? null;
         if ($command === null) {
-            return "🤔 No conozco el comando «/{$name}». Escribe /ayuda para ver la lista.";
+            return "🤔 No conozco el comando «/{$name}». Escribe /menu para ver las opciones.";
         }
 
         return $command->handle(new BotContext($user, $chatId, $name, trim($parts[1] ?? '')));
-    }
-
-    private function help(): string
-    {
-        $lines = [];
-        foreach ($this->all as $command) {
-            $lines[] = $command->help();
-        }
-        sort($lines);
-
-        return "🤖 Comandos disponibles:\n\n" . implode("\n", $lines)
-            . "\n\nLos importes admiten coma o punto (12,50). Las categorías pueden tener varias palabras.";
     }
 }

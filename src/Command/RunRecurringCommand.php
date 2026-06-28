@@ -41,7 +41,7 @@ final class RunRecurringCommand extends Command
         }
 
         $lines = array_map(
-            fn (Expense $e) => "• " . Money::format($e->getAmount()) . " en {$e->getCategory()->getName()}",
+            fn(Expense $e) => "• " . Money::format($e->getAmount()) . " en {$e->getCategory()->getName()} ({$e->getDescription()})",
             $created,
         );
         $this->notifier->broadcast("🔁 Gastos fijos registrados automáticamente:\n" . implode("\n", $lines));
