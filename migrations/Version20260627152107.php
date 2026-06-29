@@ -5,31 +5,40 @@ declare(strict_types=1);
 namespace DoctrineMigrations;
 
 use Doctrine\DBAL\Schema\Schema;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * Auto-generated Migration: Please modify to your needs!
+ * Gastos recurrentes (portable).
  */
 final class Version20260627152107 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return '';
+        return 'Tabla recurring_expense';
     }
 
     public function up(Schema $schema): void
     {
-        // this up() migration is auto-generated, please modify it to your needs
-        $this->addSql('CREATE TABLE recurring_expense (id INT AUTO_INCREMENT NOT NULL, amount NUMERIC(10, 2) NOT NULL, description VARCHAR(255) DEFAULT NULL, day_of_month SMALLINT NOT NULL, active TINYINT NOT NULL, last_run_period VARCHAR(7) DEFAULT NULL, created_at DATETIME NOT NULL, category_id INT NOT NULL, user_id INT NOT NULL, INDEX IDX_F5CC182F12469DE2 (category_id), INDEX IDX_F5CC182FA76ED395 (user_id), PRIMARY KEY (id)) DEFAULT CHARACTER SET utf8mb4');
-        $this->addSql('ALTER TABLE recurring_expense ADD CONSTRAINT FK_F5CC182F12469DE2 FOREIGN KEY (category_id) REFERENCES category (id)');
-        $this->addSql('ALTER TABLE recurring_expense ADD CONSTRAINT FK_F5CC182FA76ED395 FOREIGN KEY (user_id) REFERENCES telegram_user (id)');
+        $table = $schema->createTable('recurring_expense');
+        $table->addColumn('id', Types::INTEGER, ['autoincrement' => true]);
+        $table->addColumn('category_id', Types::INTEGER);
+        $table->addColumn('user_id', Types::INTEGER);
+        $table->addColumn('amount', Types::DECIMAL, ['precision' => 10, 'scale' => 2]);
+        $table->addColumn('description', Types::STRING, ['length' => 255, 'notnull' => false]);
+        $table->addColumn('day_of_month', Types::SMALLINT);
+        $table->addColumn('active', Types::BOOLEAN);
+        $table->addColumn('last_run_period', Types::STRING, ['length' => 7, 'notnull' => false]);
+        $table->addColumn('created_at', Types::DATETIME_IMMUTABLE);
+        $table->setPrimaryKey(['id']);
+        $table->addIndex(['category_id'], 'IDX_F5CC182F12469DE2');
+        $table->addIndex(['user_id'], 'IDX_F5CC182FA76ED395');
+        $table->addForeignKeyConstraint('category', ['category_id'], ['id'], [], 'FK_F5CC182F12469DE2');
+        $table->addForeignKeyConstraint('telegram_user', ['user_id'], ['id'], [], 'FK_F5CC182FA76ED395');
     }
 
     public function down(Schema $schema): void
     {
-        // this down() migration is auto-generated, please modify it to your needs
-        $this->addSql('ALTER TABLE recurring_expense DROP FOREIGN KEY FK_F5CC182F12469DE2');
-        $this->addSql('ALTER TABLE recurring_expense DROP FOREIGN KEY FK_F5CC182FA76ED395');
-        $this->addSql('DROP TABLE recurring_expense');
+        $schema->dropTable('recurring_expense');
     }
 }
