@@ -9,8 +9,9 @@ Se maneja desde un **menú con botones** (sin recordar comandos) y permite
 registrar un gasto enviando simplemente la **foto de un ticket**, que el bot lee
 automáticamente.
 
-Construido con **Symfony 8.1** y **PHP 8.4+**, almacena los datos en
-**MariaDB/MySQL** y se comunica con Telegram mediante **webhook**.
+Construido con **Symfony 8.1** y **PHP 8.4+**, guarda los datos en la base de
+datos que prefieras —**MariaDB/MySQL**, **PostgreSQL** o **SQLite**— y se
+comunica con Telegram mediante **webhook**.
 
 ---
 
@@ -39,6 +40,8 @@ Construido con **Symfony 8.1** y **PHP 8.4+**, almacena los datos en
   cualquier `MM/AAAA`.
 - **Gráficos** enviados como imagen: reparto por categoría (donut), gastado vs.
   límite (barras) y evolución de **gastos vs. ingresos** de los últimos meses.
+- **Exportación a Excel** 📄: descarga un `.xlsx` con los gastos e ingresos del
+  mes (hojas separadas + una hoja de resumen con totales y balance).
 - **Gastos recurrentes** (alquiler, suscripciones, nómina…) que se generan solos
   el día indicado de cada mes. El día admite **valores negativos contando desde
   el final** (`-1` = último día, `-2` = penúltimo…).
@@ -68,6 +71,7 @@ Construido con **Symfony 8.1** y **PHP 8.4+**, almacena los datos en
 | `/limites` | `/presupuestos` | Muestra los máximos vigentes |
 | `/resumen [pasado \| MM/AAAA]` | `/informe`, `/r` | Situación del mes (texto + gráficos) |
 | `/grafico [categorias\|limites\|evolucion] [MM/AAAA]` | `/grafica` | Envía un gráfico como imagen |
+| `/excel [pasado \| MM/AAAA]` | `/exportar` | Exporta los movimientos del mes a un Excel |
 | `/recurrente <día> <importe> <categoría> [desc]` | `/fijo` | Alta de gasto fijo mensual |
 | `/recurrentes` | `/fijos` | Lista los gastos fijos |
 | `/borrarrecurrente <id>` | `/borrarfijo` | Elimina un gasto fijo |
@@ -102,11 +106,14 @@ Construido con **Symfony 8.1** y **PHP 8.4+**, almacena los datos en
 ## 🧱 Stack y arquitectura
 
 - **PHP 8.4+**, **Symfony 8.1**
-- **Doctrine ORM** + **Doctrine Migrations** (MariaDB/MySQL)
+- **Doctrine ORM** + **Doctrine Migrations** con **esquema portable** (migraciones
+  escritas con la Schema API): funciona en **MariaDB/MySQL**, **PostgreSQL** y
+  **SQLite** sin cambiar nada salvo el `DATABASE_URL`
 - **symfony/http-client** para la Bot API de Telegram (sin librerías de terceros)
 - **wkhtmltoimage** para renderizar los gráficos (Chart.js → PNG)
 - **Google Gemini** (API REST de visión) para leer los tickets, detrás de una
   interfaz `ReceiptExtractorInterface` (motor intercambiable)
+- **PhpSpreadsheet** para generar el Excel de movimientos
 - Recepción de mensajes por **webhook** HTTPS (mensajes, fotos y pulsaciones de
   botones)
 
@@ -132,9 +139,11 @@ configuración.
 En el servidor necesitas:
 
 - **PHP 8.4 o superior** (CLI y para el servidor web) con las extensiones
-  `pdo_mysql`, `ctype`, `iconv`, `mbstring` y `bcmath`.
+  `ctype`, `iconv`, `mbstring`, `bcmath`, `zip` (para el Excel) y el
+  **PDO de tu motor** (`pdo_mysql`, `pdo_pgsql` o `pdo_sqlite`).
 - **Composer**
-- **MariaDB** o **MySQL**
+- Una **base de datos**: **MariaDB/MySQL**, **PostgreSQL** o **SQLite**
+  (SQLite no necesita servidor: es un único archivo).
 - Un **servidor web** con soporte HTTPS y un **dominio** con certificado TLS
   válido (Telegram exige HTTPS para el webhook).
 - **wkhtmltoimage** (paquete `wkhtmltopdf`) para generar los gráficos. En Linux
@@ -215,6 +224,15 @@ GEMINI_MODEL="gemini-2.5-flash"
 
 - `VERSION` debe coincidir con tu servidor, p. ej. `10.11.2-MariaDB` o `8.0.21`
   (MySQL).
+- **El motor lo eliges con el `DATABASE_URL`**; el esquema es portable:
+  ```dotenv
+  # SQLite (sin servidor):
+  DATABASE_URL="sqlite:///%kernel.project_dir%/var/gastos.db"
+  # PostgreSQL:
+  DATABASE_URL="postgresql://USUARIO:PASSWORD@127.0.0.1:5432/gastos_bot?serverVersion=16&charset=utf8"
+  # MySQL / MariaDB:
+  DATABASE_URL="mysql://USUARIO:PASSWORD@127.0.0.1:3306/gastos_bot?serverVersion=VERSION&charset=utf8mb4"
+  ```
 - `TELEGRAM_WEBHOOK_SECRET` es un secreto propio que Telegram reenvía en cada
   petición (cabecera `X-Telegram-Bot-Api-Secret-Token`); el bot rechaza
   cualquier petición que no lo incluya correctamente.
@@ -227,7 +245,9 @@ GEMINI_MODEL="gemini-2.5-flash"
 
 ## 🗄️ Base de datos y migraciones
 
-El esquema se gestiona con Doctrine Migrations. Comandos habituales:
+El esquema se gestiona con Doctrine Migrations, escritas con la **Schema API**,
+así que el mismo `doctrine:migrations:migrate` genera el DDL correcto para tu
+motor (MariaDB/MySQL, PostgreSQL o SQLite). Comandos habituales:
 
 ```bash
 # Aplicar las migraciones pendientes
@@ -356,6 +376,7 @@ día, cada gasto recurrente se genera una sola vez por mes.
 | `app:recurring:run` | Crea los gastos recurrentes pendientes de hoy |
 | `app:summary:send [actual\|pasado\|MM/AAAA]` | Envía el informe (texto + gráficos) a todos los usuarios |
 | `app:chart:preview <tipo> [salida] [mes]` | Renderiza un gráfico a un PNG local (sin enviarlo) |
+| `app:excel:preview [mes] [salida]` | Genera el Excel del mes en un archivo local (sin enviarlo) |
 
 ---
 
@@ -408,6 +429,7 @@ src/
 │   ├── SummaryReporter.php          Informe (texto + gráficos) a uno o todos
 │   ├── RecurringExpenseRunner.php   Generación de gastos recurrentes
 │   ├── Chart/                       Fábrica y render de gráficos (wkhtmltoimage)
+│   ├── Export/                      Generación del Excel (PhpSpreadsheet)
 │   ├── Receipt/                     Extracción de tickets (interfaz + Gemini)
 │   └── Telegram/TelegramApi.php     Cliente de la Bot API
 └── Telegram/
@@ -437,7 +459,6 @@ src/
 
 Funciones contempladas para más adelante:
 
-- Exportación de gastos a CSV/Excel.
 - Desglose por persona (cuánto aporta cada usuario).
 - Guardar la imagen del ticket junto al gasto registrado.
 - Presupuesto total mensual y objetivo de ahorro.

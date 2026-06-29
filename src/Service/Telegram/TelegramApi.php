@@ -138,6 +138,29 @@ final class TelegramApi
         }
     }
 
+    public function sendDocument(string $chatId, string $filePath, string $filename, ?string $caption = null): void
+    {
+        try {
+            $fields = ['chat_id' => $chatId];
+            if ($caption !== null && $caption !== '') {
+                $fields['caption'] = $caption;
+            }
+            $fields['document'] = DataPart::fromPath(
+                $filePath,
+                $filename,
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            );
+
+            $form = new FormDataPart($fields);
+            $this->httpClient->request('POST', $this->endpoint('sendDocument'), [
+                'headers' => $form->getPreparedHeaders()->toArray(),
+                'body' => $form->bodyToIterable(),
+            ])->getStatusCode();
+        } catch (\Throwable $e) {
+            $this->logger->error('Telegram sendDocument falló: ' . $e->getMessage());
+        }
+    }
+
     /** @return array<string, mixed> */
     public function setWebhook(string $url, string $secret): array
     {

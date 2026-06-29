@@ -32,6 +32,24 @@ class IncomeRepository extends ServiceEntityRepository
     }
 
     /**
+     * Ingresos de un periodo, en orden cronológico (para exportar).
+     *
+     * @return Income[]
+     */
+    public function findForPeriod(\DateTimeImmutable $from, \DateTimeImmutable $to): array
+    {
+        return $this->createQueryBuilder('i')
+            ->where('i.receivedAt >= :from')
+            ->andWhere('i.receivedAt < :to')
+            ->setParameter('from', $from->format('Y-m-d'))
+            ->setParameter('to', $to->format('Y-m-d'))
+            ->orderBy('i.receivedAt', 'ASC')
+            ->addOrderBy('i.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * @return Income[]
      */
     public function findRecent(int $limit = 10): array

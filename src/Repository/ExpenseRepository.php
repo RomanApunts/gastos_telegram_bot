@@ -57,6 +57,24 @@ class ExpenseRepository extends ServiceEntityRepository
     }
 
     /**
+     * Gastos de un periodo, en orden cronológico (para exportar).
+     *
+     * @return Expense[]
+     */
+    public function findForPeriod(\DateTimeImmutable $from, \DateTimeImmutable $to): array
+    {
+        return $this->createQueryBuilder('e')
+            ->where('e.spentAt >= :from')
+            ->andWhere('e.spentAt < :to')
+            ->setParameter('from', $from->format('Y-m-d'))
+            ->setParameter('to', $to->format('Y-m-d'))
+            ->orderBy('e.spentAt', 'ASC')
+            ->addOrderBy('e.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * Últimos gastos registrados, del más reciente al más antiguo.
      *
      * @return Expense[]
