@@ -63,8 +63,11 @@ comunica con Telegram mediante **webhook**.
 | `/editar <id> <importe\|categoria\|descripcion> <valor>` | `/edit` | Corrige un gasto |
 | `/borrar <id>` | `/eliminar`, `/del` | Elimina un gasto |
 | `/ingreso <importe> [descripción]` | `/ing` | Registra un ingreso |
-| `/ingresos [n]` | — | Lista los últimos ingresos |
+| `/ingresos [n]` | — | Últimos ingresos, con botones para borrar |
 | `/borraringreso <id>` | `/borrarin` | Elimina un ingreso |
+| `/ingresofijo <día> <importe> [desc]` | `/ingfijo` | Alta de ingreso fijo mensual |
+| `/ingresosfijos` | `/ingfijos` | Lista los ingresos fijos |
+| `/borraringresofijo <id>` | `/borraringfijo` | Elimina un ingreso fijo |
 | `/nuevacategoria <nombre>` | `/nuevacat` | Crea una categoría |
 | `/categorias` | `/cats` | Lista las categorías |
 | `/limite <categoría> <importe>` | `/presupuesto` | Fija el máximo mensual de una categoría |
@@ -94,12 +97,16 @@ comunica con Telegram mediante **webhook**.
   categoría), el bot te ofrece botones para elegirla y confirmar.
 - **Gestionar gastos**: `/ultimos` lista los gastos con un botón cada uno; al
   pulsarlo puedes **borrarlo** (con confirmación) o **cambiarle la categoría**.
+- **Gestionar ingresos**: `/ingresos` funciona igual; al pulsar un ingreso puedes
+  **borrarlo** (con confirmación). No tienen categoría, así que esa es la única
+  acción.
 - Los importes admiten coma o punto decimal (`12,50` o `12.50`) y opcionalmente
   el símbolo `€`.
 - Las categorías pueden tener varias palabras; el bot las reconoce al principio
   del texto y toma el resto como descripción.
-- En `/recurrente`, el día puede ser de `1` a `31` (día fijo, ajustado al final
-  del mes si no existe) o de `-1` a `-28` para contar desde el final del mes.
+- En `/recurrente` y `/ingresofijo`, el día puede ser de `1` a `31` (día fijo,
+  ajustado al final del mes si no existe) o de `-1` a `-28` para contar desde el
+  final del mes.
 
 ---
 
@@ -351,7 +358,7 @@ Dos procesos están pensados para ejecutarse de forma periódica con el cron del
 sistema. Configúralos (p. ej. con `crontab -e`) usando rutas absolutas:
 
 ```cron
-# Generar los gastos recurrentes que toquen — cada día a las 6:00
+# Generar los gastos e ingresos recurrentes que toquen — cada día a las 6:00
 0 6 * * *   cd /ruta/al/proyecto && php bin/console app:recurring:run >> var/log/cron.log 2>&1
 
 # Resumen semanal — domingos a las 20:00 (mes actual)
@@ -362,7 +369,7 @@ sistema. Configúralos (p. ej. con `crontab -e`) usando rutas absolutas:
 ```
 
 `app:recurring:run` es **idempotente**: aunque se ejecute varias veces el mismo
-día, cada gasto recurrente se genera una sola vez por mes.
+día, cada gasto o ingreso recurrente se genera una sola vez por mes.
 
 ---
 
@@ -373,7 +380,7 @@ día, cada gasto recurrente se genera una sola vez por mes.
 | `app:user:add <id> <nombre>` | Autoriza (o reactiva) a un usuario |
 | `app:bot:set-webhook <url>` / `--delete` | Registra o elimina el webhook |
 | `app:bot:simulate <id> <mensaje>` | Prueba un mensaje en local sin Telegram |
-| `app:recurring:run` | Crea los gastos recurrentes pendientes de hoy |
+| `app:recurring:run` | Crea los gastos e ingresos recurrentes pendientes de hoy |
 | `app:summary:send [actual\|pasado\|MM/AAAA]` | Envía el informe (texto + gráficos) a todos los usuarios |
 | `app:chart:preview <tipo> [salida] [mes]` | Renderiza un gráfico a un PNG local (sin enviarlo) |
 | `app:excel:preview [mes] [salida]` | Genera el Excel del mes en un archivo local (sin enviarlo) |

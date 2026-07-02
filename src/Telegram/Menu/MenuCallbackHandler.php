@@ -21,6 +21,7 @@ final class MenuCallbackHandler
         'cats' => '/categorias',
         'limits' => '/limites',
         'fijos' => '/recurrentes',
+        'fijosingreso' => '/ingresosfijos',
         'ultimos' => '/ultimos',
         'gcat' => '/grafico categorias',
         'glim' => '/grafico limites',
