@@ -23,6 +23,10 @@ comunica con Telegram mediante **webhook**.
 - **Lectura de tickets por foto** 🧾: envías la foto de un ticket y el bot extrae
   el importe, la fecha y el comercio, y propone una categoría (visión con Google
   Gemini). Lo confirmas o lo ajustas con botones antes de guardarlo.
+- **Registro por nota de voz** 🎙️: mándale un audio (p. ej. *«me he gastado 12
+  euros con 50 en gasolina»* o *«hoy he cobrado la nómina, 1800 euros»*) y el bot
+  lo transcribe, decide si es **gasto o ingreso**, extrae importe, categoría,
+  fecha y concepto (Google Gemini), y te pide confirmación con botones.
 - **Registro de gastos** categorizados (importe, descripción y atribución al
   usuario). Admite **fecha pasada** (`ayer`, `12/06`…) y, si no indicas
   categoría, te la pregunta con botones.
@@ -131,7 +135,8 @@ Telegram → POST /telegram/webhook → TelegramWebhookController
         → UpdateProcessor (autoriza por whitelist)
             ├─ texto    → CommandRouter → BotCommand (lógica + persistencia)
             ├─ foto     → ReceiptFlow  → Gemini → PendingExpense + botones
-            └─ callback → MenuCallbackHandler / PendingExpenseCallbackHandler
+            ├─ voz      → VoiceFlow    → Gemini → PendingExpense / PendingIncome + botones
+            └─ callback → MenuCallbackHandler / PendingExpenseCallbackHandler / …
         → TelegramApi (sendMessage / sendPhoto / editMessageText)
 ```
 
