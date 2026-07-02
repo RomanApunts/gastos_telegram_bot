@@ -9,6 +9,8 @@ use App\Telegram\Income\IncomeCallbackHandler;
 use App\Telegram\Menu\MenuCallbackHandler;
 use App\Telegram\Receipt\PendingExpenseCallbackHandler;
 use App\Telegram\Receipt\ReceiptFlow;
+use App\Telegram\Voice\PendingIncomeCallbackHandler;
+use App\Telegram\Voice\VoiceFlow;
 
 /**
  * Recibe un "update" crudo de Telegram, autoriza al usuario y lo despacha
@@ -25,6 +27,8 @@ final class UpdateProcessor
         private readonly MenuCallbackHandler $menuCallbackHandler,
         private readonly ExpenseCallbackHandler $expenseCallbackHandler,
         private readonly IncomeCallbackHandler $incomeCallbackHandler,
+        private readonly VoiceFlow $voiceFlow,
+        private readonly PendingIncomeCallbackHandler $pendingIncomeCallbackHandler,
     ) {
     }
 
@@ -70,6 +74,17 @@ final class UpdateProcessor
             }
         }
 
+        // Nota de voz o audio: la interpreta como gasto o ingreso.
+        $voice = $message['voice'] ?? $message['audio'] ?? null;
+        if (is_array($voice) && isset($voice['file_id'])) {
+            $mime = (isset($voice['mime_type']) && is_string($voice['mime_type']) && $voice['mime_type'] !== '')
+                ? $voice['mime_type']
+                : 'audio/ogg';
+            $this->voiceFlow->handleVoice($user, $chatId, (string) $voice['file_id'], $mime);
+
+            return;
+        }
+
         // Comando de texto.
         $text = (string) ($message['text'] ?? '');
         if (trim($text) === '') {
@@ -112,6 +127,8 @@ final class UpdateProcessor
             $this->menuCallbackHandler->handle($user, $callbackId, $chatId, $messageId, $data);
         } elseif (str_starts_with($data, 'e:')) {
             $this->expenseCallbackHandler->handle($user, $callbackId, $chatId, $messageId, $data);
+        } elseif (str_starts_with($data, 'pi:')) {
+            $this->pendingIncomeCallbackHandler->handle($user, $callbackId, $chatId, $messageId, $data);
         } elseif (str_starts_with($data, 'i:')) {
             $this->incomeCallbackHandler->handle($user, $callbackId, $chatId, $messageId, $data);
         } else {

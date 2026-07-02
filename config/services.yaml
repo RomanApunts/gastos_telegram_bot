@@ -22,5 +22,8 @@ services:
     # Motor de extracción de tickets (intercambiable: Gemini, Tesseract, Claude…)
     App\Service\Receipt\ReceiptExtractorInterface: '@App\Service\Receipt\GeminiReceiptExtractor'
 
+    # Motor de interpretación de notas de voz (intercambiable)
+    App\Service\Voice\VoiceExtractorInterface: '@App\Service\Voice\GeminiVoiceExtractor'
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
