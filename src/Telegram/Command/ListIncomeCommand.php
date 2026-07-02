@@ -2,18 +2,18 @@
 
 namespace App\Telegram\Command;
 
-use App\Entity\Income;
-use App\Repository\IncomeRepository;
+use App\Service\Telegram\TelegramApi;
 use App\Telegram\BotContext;
-use App\Telegram\Util\Money;
+use App\Telegram\Income\IncomeListPresenter;
 
 /**
- * Últimos ingresos:  /ingresos [n]
+ * Últimos ingresos, con botones para borrar:  /ingresos [n]
  */
 final class ListIncomeCommand implements BotCommandInterface
 {
     public function __construct(
-        private readonly IncomeRepository $incomes,
+        private readonly TelegramApi $api,
+        private readonly IncomeListPresenter $presenter,
     ) {
     }
 
@@ -24,29 +24,21 @@ final class ListIncomeCommand implements BotCommandInterface
 
     public function help(): string
     {
-        return '/ingresos [n] — últimos ingresos con su ID';
+        return '/ingresos [n] — últimos ingresos, con botones para borrar';
     }
 
     public function handle(BotContext $ctx): string
     {
         $n = (int) trim($ctx->args);
-        $n = $n < 1 ? 10 : min($n, 30);
+        $n = $n < 1 ? 8 : min($n, 12);
 
-        $incomes = $this->incomes->findRecent($n);
-        if ($incomes === []) {
-            return 'No hay ingresos registrados todavía.';
+        $view = $this->presenter->listView($n);
+        if ($view['keyboard'] === []) {
+            return $view['text']; // no hay ingresos: respuesta normal de texto
         }
 
-        $lines = array_map(fn (Income $i) => $this->line($i), $incomes);
+        $this->api->sendMessageWithKeyboard($ctx->chatId, $view['text'], $view['keyboard']);
 
-        return "💰 Últimos ingresos:\n" . implode("\n", $lines);
-    }
-
-    private function line(Income $i): string
-    {
-        $desc = $i->getDescription() !== null ? " {$i->getDescription()}" : '';
-
-        return "#{$i->getId()} · {$i->getReceivedAt()->format('d/m')} · "
-            . Money::format($i->getAmount()) . "{$desc} — {$i->getUser()->getName()}";
+        return '';
     }
 }

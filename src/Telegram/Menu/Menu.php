@@ -18,19 +18,24 @@ final class Menu
     {
         return match ($key) {
             'gasto' => [
-                'text' => "💸 Registrar un gasto\n\n"
-                    . "Escribe:\n/gasto <importe> <categoría> [fecha] [descripción]\n\n"
+                'text' => "💸 Gastos\n\n"
+                    . "Registrar uno:\n/gasto <importe> <categoría> [fecha] [descripción]\n\n"
                     . "Ejemplos:\n• /gasto 12,50 Comida menú\n• /gasto 20 Comida ayer  (fecha pasada)\n\n"
                     . "💡 Si no pones categoría, te la pregunto con botones.\n"
                     . '💡 También puedes mandarme una foto del ticket 📸',
-                'keyboard' => [self::back()],
+                'keyboard' => [
+                    [self::b('📋 Ver gastos', 'm:run:ultimos')],
+                    [self::b('🧾 Enviar ticket', 'm:nav:ticket'), self::b('🔁 Gastos fijos', 'm:nav:fijos')],
+                    self::back(),
+                ],
             ],
             'ingreso' => [
-                'text' => "💰 Registrar un ingreso\n\n"
-                    . "Escribe:\n/ingreso <importe> [descripción]\n\n"
+                'text' => "💰 Ingresos\n\n"
+                    . "Registrar uno:\n/ingreso <importe> [descripción]\n\n"
                     . 'Ejemplo:  /ingreso 1800 nómina',
                 'keyboard' => [
                     [self::b('📋 Ver ingresos', 'm:run:ingresos')],
+                    [self::b('🔁 Ingresos fijos', 'm:nav:fijosingreso')],
                     self::back(),
                 ],
             ],
@@ -73,25 +78,22 @@ final class Menu
                     self::back(),
                 ],
             ],
-            'edit' => [
-                'text' => "✏️ Editar o borrar\n\n"
-                    . "Pulsa «Ver últimos» y elige un gasto: podrás borrarlo o "
-                    . "cambiarle la categoría con botones.\n\n"
-                    . "También por comando:\n"
-                    . "/borrar <id>\n/editar <id> importe|categoria|descripcion <valor>",
+            'fijosingreso' => [
+                'text' => "🔁 Ingresos fijos\n\n"
+                    . "Crear uno:\n/ingresofijo <día> <importe> [descripción]\n"
+                    . '💡 Día -1 = último día del mes.',
                 'keyboard' => [
-                    [self::b('📋 Ver últimos', 'm:run:ultimos')],
+                    [self::b('📋 Ver fijos', 'm:run:fijosingreso')],
                     self::back(),
                 ],
             ],
             default => [
                 'text' => "👋 ¿Qué quieres hacer?\n\nElige una opción 👇",
                 'keyboard' => [
-                    [self::b('💸 Registrar gasto', 'm:nav:gasto'), self::b('💰 Registrar ingreso', 'm:nav:ingreso')],
-                    [self::b('🧾 Enviar ticket', 'm:nav:ticket'), self::b('📊 Resumen', 'm:run:resumen')],
-                    [self::b('📈 Gráficos', 'm:nav:graf'), self::b('🏷️ Categorías', 'm:nav:cats')],
-                    [self::b('🎯 Límites', 'm:nav:limits'), self::b('🔁 Gastos fijos', 'm:nav:fijos')],
-                    [self::b('✏️ Editar/Borrar', 'm:nav:edit'), self::b('📄 Excel del mes', 'm:run:excel')],
+                    [self::b('💸 Gastos', 'm:nav:gasto'), self::b('💰 Ingresos', 'm:nav:ingreso')],
+                    [self::b('📊 Resumen', 'm:run:resumen'), self::b('📈 Gráficos', 'm:nav:graf')],
+                    [self::b('🏷️ Categorías', 'm:nav:cats'), self::b('🎯 Límites', 'm:nav:limits')],
+                    [self::b('📄 Excel del mes', 'm:run:excel')],
                 ],
             ],
         };
